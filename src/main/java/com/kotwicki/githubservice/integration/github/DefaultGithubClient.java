@@ -21,6 +21,7 @@ public class DefaultGithubClient implements GithubClient {
                 .retrieve()
                 .onStatus(httpStatus -> httpStatus.value() == 404, clientResponse -> Mono.empty())
                 .onStatus(HttpStatus::is4xxClientError, this::mapClientError)
+                .onStatus(HttpStatus::isError, this::mapCommonError)
                 .bodyToMono(GithubRepoResponse.class);
     }
 
@@ -28,4 +29,10 @@ public class DefaultGithubClient implements GithubClient {
         return response.bodyToMono(GithubClientErrorResponse.class)
                 .flatMap(githubClientErrorResponse -> Mono.error(new GithubClientException(githubClientErrorResponse.message)));
     }
+
+    private Mono<? extends Throwable> mapCommonError(final ClientResponse response) {
+        final String message = response.statusCode().getReasonPhrase();
+        return Mono.error(new GithubClientException(message));
+    }
+
 }
